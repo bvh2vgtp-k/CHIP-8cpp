@@ -10,6 +10,8 @@ constexpr int32_t WINDOW_HEIGTH = 32 * MODIFIER;
 constexpr uint32_t VIDEO_SCALE = 15;
 constexpr uint32_t SPEED = 500;
 
+constexpr uint32_t TARGET_FPS = 15;
+
 using Clock = std::chrono::high_resolution_clock;
 
 int main(int argc, char **argv){
@@ -24,6 +26,7 @@ int main(int argc, char **argv){
 
 	auto last = Clock::now();
 	bool quit = false;
+	uint32_t delay = (1 / TARGET_FPS) * 1000;
 
 	while(!quit){
 		if(!render.processInput(emu.keys)){
@@ -42,6 +45,7 @@ int main(int argc, char **argv){
 				emu.drawflag = false;
 			}
 		}
+		SDL_Delay(delay);
 	}
 
 	return 0;
