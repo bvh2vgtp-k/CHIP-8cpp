@@ -1,8 +1,9 @@
 #include "emulator.hpp"
 #include <cstdint>
-#include <cstdio>
 #include <print>
 #include <random>
+#include <fstream>
+#include <iostream>
 
 
 const uint8_t chip8_fontset[80] = {
@@ -267,7 +268,7 @@ void emulator::emulate(){
 					}
 					break;
 				default:
-					std::println("Unknown opcode");
+					std::println(std::cerr, "Error: Unknown opcode");
 					break;
 			}
 	}
@@ -284,72 +285,25 @@ void emulator::emulate(){
 }
 
 void emulator::loadROM(const char* filename){
-#if 0
-	fs::path p {filename};
-	auto fSize = fs::file_size(p); // get the file size 
+	std::ifstream file(filename, std::ios::binary | std::ios::ate);
 
-	std::println("Loading {}", fs::absolute(p).string());
-	std::println("File size of {} is {}", p.string(), fSize);
-
-	// logic for loading a file in mem
-	// TODO: probably переделать надо 
-	if((4096 - 512) < fSize){
-		std::println("Error: File is too big");
-	} else {
-		std::ifstream inputFile(filename, std::ios::binary);
-		std::vector<uint8_t> buffer;
-		uint8_t c;
-		while(inputFile >> c){
-			buffer.push_back(c);
-		}
-		std::copy(buffer.begin(), buffer.end(), ram+512);
-		inputFile.close();
-	}
-#endif
-
-	/*TODO: rewrite with more modern approach*/
-	/*stole this from guide. Not really modern solution but it is working....*/
-	FILE *rom = fopen(filename, "rb");
-	if (rom == nullptr)
-	{
-		fprintf(stderr, "Error: Failed to open ROM %s\n", filename);
-		exit(1);
+	if (!file.is_open()) {
+		throw std::runtime_error("Error: Failed to open ROM " + std::string(filename));
 	}
 
-	// Get file size
-	fseek(rom, 0, SEEK_END);
-	long rom_size = ftell(rom);
-	rewind(rom);
+	std::streamsize rom_size = file.tellg();
+	file.seekg(0, std::ios::beg);
 
-	// Allocate buffer and read ROM
-	char *buffer = (char *)malloc(sizeof(char) * rom_size);
-	if (buffer == nullptr)
-	{
-		fprintf(stderr, "Error: Failed to allocate memory for ROM\n");
-		exit(1);
-	}
-	size_t result = fread(buffer, 1, rom_size, rom);
-	if (result != rom_size)
-	{
-		fprintf(stderr, "Error: Failed to read ROM\n");
-		exit(1);
+	if (rom_size > (4096 - 0x200)) {
+		throw std::runtime_error("Error: ROM too large for memory");
 	}
 
-	// Copy ROM into Chip-8 memory
-	if ((4096 - 0x200) >= rom_size)
-	{
-		for (int i = 0; i < rom_size; ++i)
-		{
-			ram[i + 0x200] = buffer[i];
-		}
-	}
-	else
-	{
-		fprintf(stderr, "Error: ROM too large for memory\n");
-		exit(1);
+	std::vector<char> buffer(rom_size);
+	if (!file.read(buffer.data(), rom_size)) {
+		throw std::runtime_error("Error: Failed to read ROM"); // ))
 	}
 
-	fclose(rom);
-	free(buffer);
+	std::copy(buffer.begin(), buffer.end(), ram + 0x200);
+
 }
 
